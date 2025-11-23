@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 import { useLanguage } from "@/contexts/language-context"
 import { Button } from "@/components/ui/button"
@@ -9,21 +10,23 @@ import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { validateEmail } from "@/lib/validators"
 import Link from "next/link"
-import { Loader2, CheckCircle2, ChevronLeft, Mail, Shield, Clock, Truck } from "lucide-react"
+import { Loader2, CheckCircle2, ChevronLeft, Mail, Shield, Clock, Truck, KeyRound } from "lucide-react"
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 
 export default function ForgotPasswordPage() {
   const { t } = useLanguage()
+  const router = useRouter()
   const [email, setEmail] = useState("")
+  const [otp, setOtp] = useState("")
+  const [step, setStep] = useState<"email" | "otp">("email")
   const [error, setError] = useState("")
-  const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const translations = t.forgotPassword
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    setSuccess(false)
 
     if (!validateEmail(email)) {
       setError("Email không hợp lệ")
@@ -33,9 +36,30 @@ export default function ForgotPasswordPage() {
     setLoading(true)
     try {
       await apiClient.forgotPassword(email)
-      setSuccess(true)
+      setStep("otp")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gửi email thất bại")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+
+    if (otp.length !== 6) {
+      setError("Vui lòng nhập mã OTP 6 số")
+      return
+    }
+
+    setLoading(true)
+    try {
+      await apiClient.verifyOtp(email, otp)
+      // Redirect to reset password page with email and code
+      router.push(`/reset-password?email=${encodeURIComponent(email)}&code=${encodeURIComponent(otp)}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Mã OTP không hợp lệ")
     } finally {
       setLoading(false)
     }
@@ -54,59 +78,29 @@ export default function ForgotPasswordPage() {
         <div className="max-w-[440px] mx-auto w-full">
           <div className="mb-8 animate-fade-in-up">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-green/10 to-accent-green/5 mb-6 shadow-lg shadow-accent-green/5">
-              <Mail className="w-8 h-8 text-accent-green" />
+              {step === "email" ? (
+                <Mail className="w-8 h-8 text-accent-green" />
+              ) : (
+                <KeyRound className="w-8 h-8 text-accent-green" />
+              )}
             </div>
             <h1 className="text-[2rem] font-extrabold mb-2 leading-tight bg-gradient-to-br from-foreground via-gray-800 to-gray-600 bg-clip-text text-transparent">
-              {translations.title}
+              {step === "email" ? translations.title : "Xác thực OTP"}
             </h1>
-            <p className="text-muted-foreground text-[0.9375rem]">{translations.subtitle}</p>
+            <p className="text-muted-foreground text-[0.9375rem]">
+              {step === "email" ? translations.subtitle : `Nhập mã OTP được gửi đến ${email}`}
+            </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+          <form onSubmit={step === "email" ? handleEmailSubmit : handleOtpSubmit} className="space-y-5 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
             {error && (
               <Alert variant="destructive" className="animate-shake">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
-            {success ? (
-              <div className="space-y-6 animate-fade-in">
-                <Alert className="border-green-200 bg-green-50 text-green-900">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <AlertDescription className="ml-2">
-                    <strong className="font-semibold">{translations.successTitle}</strong>
-                    <br />
-                    {translations.successMessage}
-                  </AlertDescription>
-                </Alert>
-
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl p-6 space-y-4 border border-gray-200">
-                  <h3 className="font-semibold text-neutral-900">{translations.noEmailTitle}</h3>
-                  <ul className="space-y-2 text-sm text-neutral-600">
-                    <li className="flex items-start gap-2">
-                      <span className="text-accent-green mt-0.5 font-bold">•</span>
-                      <span>{translations.tip1}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-accent-green mt-0.5 font-bold">•</span>
-                      <span>{translations.tip2}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-accent-green mt-0.5 font-bold">•</span>
-                      <span>{translations.tip3}</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <Button
-                  asChild
-                  className="w-full h-13 bg-gradient-to-br from-foreground via-gray-900 to-gray-800 hover:from-gray-900 hover:via-foreground hover:to-gray-900 text-background font-semibold rounded-xl shadow-lg shadow-gray-900/25 hover:shadow-xl hover:shadow-gray-900/30 transition-all duration-300 hover:-translate-y-0.5"
-                >
-                  <Link href="/login">{translations.backToLogin}</Link>
-                </Button>
-              </div>
-            ) : (
+            {step === "email" ? (
               <>
                 <div className="relative group">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-foreground transition-colors pointer-events-none z-10" />
@@ -146,6 +140,51 @@ export default function ForgotPasswordPage() {
                   </Link>
                 </div>
               </>
+            ) : (
+              <div className="flex flex-col items-center space-y-6">
+                <InputOTP
+                  maxLength={6}
+                  value={otp}
+                  onChange={(value) => setOtp(value)}
+                  disabled={loading}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+
+                <div className="flex flex-col w-full gap-3">
+                  <Button
+                    type="submit"
+                    className="w-full h-13 bg-gradient-to-br from-foreground via-gray-900 to-gray-800 hover:from-gray-900 hover:via-foreground hover:to-gray-900 text-background font-semibold rounded-xl shadow-lg shadow-gray-900/25 hover:shadow-xl hover:shadow-gray-900/30 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 active:shadow-md"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Đang xác thực...
+                      </>
+                    ) : (
+                      "Xác thực OTP"
+                    )}
+                  </Button>
+                  
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setStep("email")}
+                    disabled={loading}
+                    className="text-muted-foreground"
+                  >
+                    Quay lại
+                  </Button>
+                </div>
+              </div>
             )}
           </form>
         </div>

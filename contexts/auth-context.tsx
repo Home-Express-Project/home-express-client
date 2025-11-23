@@ -19,6 +19,19 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { apiClient } from "@/lib/api-client"
 import { useRouter, usePathname } from "next/navigation"
 
+const PUBLIC_ROUTES = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/unauthorized",
+  "/",
+]
+
+// Enable verbose auth logging only in local dev by setting NEXT_PUBLIC_LOG_AUTH=true
+const AUTH_DEBUG = process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_LOG_AUTH === "true"
+
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
@@ -110,21 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
 
-  // Public routes that don't require authentication
-  const publicRoutes = [
-    '/login',
-    '/signup',
-    '/forgot-password',
-    '/reset-password',
-    '/verify-email',
-    '/unauthorized',
-    '/',
-  ]
-
   useEffect(() => {
     const checkAuth = async () => {
       // Skip auth check on public routes to prevent redirect loop
-      if (publicRoutes.some(route => pathname?.startsWith(route))) {
+      if (PUBLIC_ROUTES.some((route) => pathname?.startsWith(route))) {
         setLoading(false)
         return
       }
@@ -137,9 +139,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
+        console.log("🔄 Checking auth state...")
         const userData = await apiClient.request<User>("/auth/me")
+        console.log("✅ Auth check success:", userData)
         setUser(userData)
       } catch (error) {
+        console.error("❌ Auth check failed:", error)
         setUser(null)
         // Don't redirect here - let the api-client handle it
       } finally {
@@ -157,10 +162,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * @throws Error if credentials are invalid
    */
   const login = async (email: string, password: string) => {
-    console.log("🔐 Login attempt:", email)
+    if (AUTH_DEBUG) console.log("🔐 Login attempt:", email)
     try {
       const response = await apiClient.login(email, password)
-      console.log("Login successful:", response)
+      if (AUTH_DEBUG) console.log("Login successful for:", response.user.email)
 
       // Update user state immediately
       setUser(response.user)
@@ -172,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         MANAGER: "/admin",
       }
       const redirectPath = redirectMap[response.user.role]
-      console.log("🚀 Redirecting to:", redirectPath)
+      if (AUTH_DEBUG) console.log("🚀 Redirecting to:", redirectPath)
 
       // Use router.push instead of window.location to preserve state
       // Small delay to ensure state is updated
@@ -185,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   /**
-   * Registers new user and redirects based on role
+   * Registers new user and redirects to verification page
    *
    * @param data - Registration data
    * @throws Error if email already exists or validation fails
@@ -193,19 +198,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (data: RegisterData) => {
     const response = await apiClient.register(data)
 
-    // Update user state immediately
-    setUser(response.user)
+    // Don't set user state yet, as they are not verified/logged in
+    // setUser(response.user)
 
-    // Redirect based on role
-    const redirectMap = {
-      CUSTOMER: "/customer",
-      TRANSPORT: "/transport",
-      MANAGER: "/admin",
-    }
-
-    // Small delay to ensure state is updated
-    await new Promise(resolve => setTimeout(resolve, 100))
-    router.push(redirectMap[response.user.role])
+    // Redirect to verification page
+    router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
   }
 
   /**

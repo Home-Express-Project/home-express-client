@@ -93,6 +93,8 @@ export function useBookingEvents({
     return delay
   }, [])
 
+  const connectRef = useRef<() => void>(() => {})
+
   // Connect to SSE endpoint
   const connect = useCallback(() => {
     if (!bookingId || closedRef.current) return
@@ -363,7 +365,7 @@ export function useBookingEvents({
           
           setTimeout(() => {
             if (!closedRef.current) {
-              connect()
+              connectRef.current()
             }
           }, delay)
         } else if (retryCountRef.current >= maxRetries) {
@@ -378,9 +380,13 @@ export function useBookingEvents({
 
     } catch (err) {
       console.error("[SSE] Failed to create EventSource:", err)
-      setError(err as Error)
+      Promise.resolve().then(() => setError(err as Error))
     }
   }, [bookingId, onStatusChange, onNewQuotation, onPaymentUpdate, onTransportAssignment, onDisputeUpdate, onCounterOfferUpdate, showToasts, autoReconnect, getRetryDelay])
+
+  useEffect(() => {
+    connectRef.current = connect
+  }, [connect])
 
   // Setup connection
   useEffect(() => {

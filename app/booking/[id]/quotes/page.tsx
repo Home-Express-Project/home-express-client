@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useCallback } from "react"
 import type { ReactNode } from "react"
 import useSWR from "swr"
 import { useParams } from "next/navigation"
@@ -74,7 +74,7 @@ export default function BookingQuotesPage() {
   const [assignMessage, setAssignMessage] = useState<string | null>(null)
   const [assignError, setAssignError] = useState<string | null>(null)
 
-  const estimates = data?.estimates?.estimations || []
+  const estimates = useMemo(() => data?.estimates?.estimations || [], [data])
 
   const summary = useMemo(() => {
     if (!estimates.length) return null
@@ -87,7 +87,7 @@ export default function BookingQuotesPage() {
     return { cheapest, topRated, nearest }
   }, [estimates])
 
-  async function handleAssign(transportId: number, estimatedPrice?: number) {
+  const handleAssign = useCallback(async (transportId: number, estimatedPrice?: number) => {
     if (!bookingId) return
     setAssigningId(transportId)
     setAssignError(null)
@@ -114,7 +114,7 @@ export default function BookingQuotesPage() {
     } finally {
       setAssigningId(null)
     }
-  }
+  }, [bookingId, mutate])
 
   function mapEstimate(e: ApiEstimate) {
     // Map camelCase từ API về snake_case cho component card sẵn có

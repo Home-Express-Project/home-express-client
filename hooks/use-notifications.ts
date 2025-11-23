@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import type { Notification } from "@/types"
 import { apiClient } from "@/lib/api-client"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
 
 interface NotificationSummary {
   total_unread: number
@@ -13,6 +14,7 @@ interface NotificationSummary {
 
 export function useNotifications() {
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [summary, setSummary] = useState<NotificationSummary | null>(null)
@@ -180,9 +182,15 @@ export function useNotifications() {
   }, [])
 
   useEffect(() => {
-    fetchNotifications()
-    fetchUnreadCount()
-  }, [fetchNotifications, fetchUnreadCount])
+    if (user) {
+      fetchNotifications()
+      fetchUnreadCount()
+    } else {
+      setNotifications([])
+      setUnreadCount(0)
+      setSummary(null)
+    }
+  }, [user, fetchNotifications, fetchUnreadCount])
 
   return {
     notifications,

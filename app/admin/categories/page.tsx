@@ -217,12 +217,12 @@ export default function AdminCategoriesPage() {
   const handleAddSuccess = async () => {
     mutate()
     const newCategories = await apiClient.getCategories()
-    if (newCategories.data && newCategories.data.length > 0) {
-      const newCategory = newCategories.data[newCategories.data.length - 1]
+    if (newCategories && newCategories.length > 0) {
+      const newCategory = newCategories[newCategories.length - 1]
       await logAuditAction({
         action: "CATEGORY_CREATED",
         target_type: "CATEGORY",
-        target_id: newCategory.category_id,
+        target_id: newCategory.categoryId,
       })
     }
   }

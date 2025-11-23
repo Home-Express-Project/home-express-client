@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout"
 import { navItems } from "@/lib/customer-nav-config"
@@ -65,40 +65,45 @@ function EditItemDialog({
   item,
   onSave,
 }: EditItemDialogProps) {
-  const [formData, setFormData] = useState<ManualItem>({
-    id: String(item.savedItemId),
-    brand: item.brand || "",
-    model: item.model || "",
-    productName: item.name,
-    name: item.name,
-    category: item.metadata ? (safeJsonParse<any>(item.metadata)?.category || "") : "",
-    size: (item.size as "S" | "M" | "L") || "M",
-    quantity: item.quantity,
-    declared_value: item.declaredValueVnd ? String(item.declaredValueVnd) : "",
-    weight_kg: item.weightKg ? String(item.weightKg) : "",
-    width_cm: "",
-    height_cm: "",
-    depth_cm: "",
-    is_fragile: item.isFragile,
-    requires_disassembly: item.requiresDisassembly,
-    isExpanded: true,
-    isValid: true
-  })
-
   // Load dimensions
-  useEffect(() => {
+  const [formData, setFormData] = useState<ManualItem>(() => {
+    let initialDims = { width_cm: "", height_cm: "", depth_cm: "" }
+    
     if (item.dimensions) {
       const dims = safeJsonParse<{width_cm?: number, height_cm?: number, depth_cm?: number}>(item.dimensions)
       if (dims) {
-        setFormData(prev => ({
-          ...prev,
+        initialDims = {
           width_cm: dims.width_cm ? String(dims.width_cm) : "",
           height_cm: dims.height_cm ? String(dims.height_cm) : "",
           depth_cm: dims.depth_cm ? String(dims.depth_cm) : "",
-        }))
+        }
       }
     }
-  }, [item])
+
+    return {
+      id: String(item.savedItemId),
+      brand: item.brand || "",
+      model: item.model || "",
+      productName: item.name,
+      name: item.name,
+      category: item.metadata ? (safeJsonParse<any>(item.metadata)?.category || "") : "",
+      size: (item.size as "S" | "M" | "L") || "M",
+      quantity: item.quantity,
+      declared_value: item.declaredValueVnd ? String(item.declaredValueVnd) : "",
+      weight_kg: item.weightKg ? String(item.weightKg) : "",
+      width_cm: initialDims.width_cm,
+      height_cm: initialDims.height_cm,
+      depth_cm: initialDims.depth_cm,
+      is_fragile: item.isFragile,
+      requires_disassembly: item.requiresDisassembly,
+      isExpanded: true,
+      isValid: true
+    }
+  })
+
+  const handleFormChange = useCallback((updates: Partial<ManualItem>) => {
+    setFormData((prev) => ({ ...prev, ...updates }))
+  }, [])
 
   const handleSave = () => {
     onSave(formData)
@@ -114,7 +119,7 @@ function EditItemDialog({
         <div className="py-4">
           <ItemForm 
             item={formData} 
-            onChange={(updates) => setFormData(prev => ({ ...prev, ...updates }))} 
+            onChange={handleFormChange}
             isSingleMode={true}
           />
         </div>
@@ -231,7 +236,7 @@ export default function SavedItemsPage() {
   )
   const [editingItem, setEditingItem] = useState<SavedItem | null>(null)
 
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     try {
       setIsLoading(true)
       const response = await apiClient.getSavedItems()
@@ -242,12 +247,11 @@ export default function SavedItemsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     loadItems()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [loadItems])
 
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
@@ -659,6 +663,7 @@ export default function SavedItemsPage() {
         {/* Edit dialog */}
         {editingItem && (
           <EditItemDialog 
+            key={editingItem.savedItemId}
             open={!!editingItem} 
             onOpenChange={(open) => !open && setEditingItem(null)} 
             item={editingItem} 

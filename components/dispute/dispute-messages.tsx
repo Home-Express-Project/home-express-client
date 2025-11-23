@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -32,18 +32,7 @@ export function DisputeMessages({ disputeId, currentUserId }: DisputeMessagesPro
   const [submitting, setSubmitting] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    loadMessages()
-  }, [disputeId])
-
-  useEffect(() => {
-    // Auto-scroll to bottom when messages change
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
-
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -55,7 +44,11 @@ export function DisputeMessages({ disputeId, currentUserId }: DisputeMessagesPro
     } finally {
       setLoading(false)
     }
-  }
+  }, [disputeId])
+
+  useEffect(() => {
+    loadMessages()
+  }, [loadMessages])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

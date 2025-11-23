@@ -129,7 +129,7 @@ function SmartCombobox({
           />
           <CommandList>
             <CommandEmpty className="py-3 px-4 text-sm">
-               <p className="text-muted-foreground mb-2 text-xs">Không tìm thấy "{inputValue}"</p>
+               <p className="text-muted-foreground mb-2 text-xs">Không tìm thấy &quot;{inputValue}&quot;</p>
                <Button 
                  variant="secondary" 
                  size="sm" 
@@ -139,7 +139,7 @@ function SmartCombobox({
                     setOpen(false)
                  }}
                >
-                 + Tạo mới "{inputValue}"
+                 + Tạo mới &quot;{inputValue}&quot;
                </Button>
             </CommandEmpty>
             <CommandGroup>
@@ -215,7 +215,7 @@ export function ItemForm({ item, onChange, onDelete, isSingleMode = false }: Ite
     if (normalized && normalized !== item.category) {
         onChange({ category: normalized })
     }
-  }, [item.category, item.is_fragile, item.weight_kg])
+  }, [item.category, item.is_fragile, item.weight_kg, onChange])
 
   const handleUpdate = (field: keyof ManualItem, value: any) => {
     const updates: Partial<ManualItem> = { [field]: value }

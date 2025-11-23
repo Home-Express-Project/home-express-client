@@ -29,7 +29,7 @@ export function CtaSection() {
               </span>
             </h2>
             <p className="mb-12 text-pretty text-lg leading-relaxed text-gray-300 md:text-xl">
-              Tham gia cùng hàng nghìn khách hàng đã tin tưởng và trải nghiệm dịch vụ chuyển nhà tốt nhất trên thị
+              Tham gia cùng hàng trăm khách hàng đã tin tưởng và trải nghiệm dịch vụ chuyển nhà tốt nhất trên thị
               trường
             </p>
 
@@ -57,12 +57,12 @@ export function CtaSection() {
 
             <div className="mt-12 flex flex-wrap items-center justify-center gap-8 border-t border-white/10 pt-8">
               <div className="text-center">
-                <div className="text-2xl font-black text-white">10,000+</div>
+                <div className="text-2xl font-black text-white">100+</div>
                 <div className="text-sm text-gray-400">Khách hàng hài lòng</div>
               </div>
               <div className="h-8 w-px bg-white/10" />
               <div className="text-center">
-                <div className="text-2xl font-black text-white">4.9/5</div>
+                <div className="text-2xl font-black text-white">4.8/5</div>
                 <div className="text-sm text-gray-400">Đánh giá trung bình</div>
               </div>
               <div className="h-8 w-px bg-white/10" />

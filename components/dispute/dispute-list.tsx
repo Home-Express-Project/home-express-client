@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -40,19 +40,7 @@ export function DisputeList({ bookingId, onDisputeClick }: DisputeListProps) {
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>("all")
 
-  useEffect(() => {
-    loadDisputes()
-  }, [bookingId])
-
-  useEffect(() => {
-    if (statusFilter === "all") {
-      setFilteredDisputes(disputes)
-    } else {
-      setFilteredDisputes(disputes.filter(d => d.status === statusFilter))
-    }
-  }, [statusFilter, disputes])
-
-  const loadDisputes = async () => {
+  const loadDisputes = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -65,7 +53,11 @@ export function DisputeList({ bookingId, onDisputeClick }: DisputeListProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [bookingId])
+
+  useEffect(() => {
+    loadDisputes()
+  }, [loadDisputes])
 
   if (loading) {
     return (

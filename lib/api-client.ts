@@ -455,6 +455,17 @@ class ApiClient {
       // Get access token from localStorage (fallback if cookies don't work cross-origin)
       const accessToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
 
+      // [DEBUG] Log for notifications endpoint to debug 403 error
+      if (endpoint.includes("/notifications") || endpoint.includes("notifications")) {
+        console.groupCollapsed(`🔍 [API Debug] Requesting: ${endpoint}`)
+        console.log("Token in localStorage:", accessToken ? `Present (${accessToken.substring(0, 15)}...)` : "MISSING ❌")
+        console.log("Headers:", {
+          ...options.headers,
+          Authorization: accessToken ? "Bearer [HIDDEN]" : "None"
+        })
+        console.groupEnd()
+      }
+
       const config: RequestInit = {
         ...options,
         credentials: "include", // Send cookies with every request
@@ -544,8 +555,22 @@ class ApiClient {
         }
 
         if (!response.ok) {
-          const error: any = new Error(data.error || data.message || "An error occurred")
+          // Try to extract meaningful error message from various common formats
+          // Spring Boot 3 Problem Details uses "title" and "detail"
+          // Standard JSON error uses "error" or "message"
+          const errorMsg = 
+            data.error || 
+            data.message || 
+            data.detail || 
+            data.title || 
+            (response.status === 401 ? "Unauthorized" : 
+             response.status === 403 ? "Forbidden" : 
+             response.statusText) || 
+            `Request failed with status ${response.status}`
+
+          const error: any = new Error(errorMsg)
           error.status = response.status
+          error.data = data // Attach data for debugging
           throw error
         }
 
@@ -772,15 +797,27 @@ class ApiClient {
     // Backend sets cookies, but also returns tokens in response body for cross-origin support
     // Store tokens in localStorage as fallback for cross-origin requests
     if (typeof window !== "undefined") {
+      // [DEBUG] Log login response structure
+      console.groupCollapsed("🔐 [API Debug] Login Response Processing")
+      console.log("Raw response keys:", Object.keys(response))
+      
       const token = response.accessToken || response.token
       const refreshToken = response.refreshToken
+      
+      console.log("Extracted Token:", token ? "Found ✅" : "Not Found ❌")
+      console.log("Extracted Refresh Token:", refreshToken ? "Found ✅" : "Not Found ❌")
 
       if (token) {
         localStorage.setItem("access_token", token)
+        console.log("Saved access_token to localStorage")
+      } else {
+        console.warn("⚠️ No access token found in login response to save!")
       }
+      
       if (refreshToken) {
         localStorage.setItem("refresh_token", refreshToken)
       }
+      console.groupEnd()
     }
 
     return response
@@ -801,6 +838,25 @@ class ApiClient {
       body: JSON.stringify(data),
     })
 
+    // NOTE: Tokens are no longer returned here. Verification is required.
+    return response
+  }
+
+  /**
+   * Verifies user registration OTP and logs them in
+   */
+  async verifyRegistration(email: string, code: string) {
+    const response = await this.request<{
+      token?: string
+      accessToken?: string
+      refreshToken?: string
+      user: User
+      message?: string
+    }>("/auth/verify-registration", {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    })
+
     // Store tokens in localStorage for cross-origin support
     if (typeof window !== "undefined") {
       const token = response.accessToken || response.token
@@ -815,6 +871,16 @@ class ApiClient {
     }
 
     return response
+  }
+
+  /**
+   * Resends verification OTP
+   */
+  async resendVerificationOtp(email: string) {
+    return this.request<{ message: string }>("/auth/resend-verification-otp", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    })
   }
 
   /**
@@ -849,12 +915,22 @@ class ApiClient {
   }
 
   /**
-   * Resets user password using reset token
+   * Verifies OTP code
    */
-  async resetPassword(token: string, new_password: string) {
+  async verifyOtp(email: string, code: string) {
+    return this.request<{ message: string; verified: string }>("/auth/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    })
+  }
+
+  /**
+   * Resets user password using OTP code
+   */
+  async resetPassword(email: string, otpCode: string, newPassword: string) {
     return this.request<{ message: string }>("/auth/reset-password", {
       method: "POST",
-      body: JSON.stringify({ token, new_password }),
+      body: JSON.stringify({ email, otpCode, newPassword }),
     })
   }
 
@@ -3554,6 +3630,23 @@ class ApiClient {
 
     const data = await response.json()
     return data.counterOffer
+  }
+
+  /**
+   * Upload avatar
+   */
+  async uploadAvatar(data: FormData) {
+    // Backend endpoint: POST /api/v1/users/profile/avatar
+    // Expects param "avatar" (file)
+    
+    // Ensure the FormData has the correct field name "avatar"
+    // The frontend code in profile page appends "avatar", so it should be fine.
+    
+    return this.request<{ avatar_url: string }>("/users/profile/avatar", {
+      method: "POST",
+      body: data,
+      headers: {}, // Let browser set Content-Type with boundary
+    })
   }
 }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { z } from "zod"
@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast"
 import { apiClient } from "@/lib/api-client"
 import { vehicleSchema } from "@/lib/validation-schemas"
 import { vehicleTypeLabels } from "@/lib/vehicle-utils"
+import { Camera, Upload, X } from "lucide-react"
+import Image from "next/image"
 
 type VehicleFormData = z.infer<typeof vehicleSchema>
 
@@ -26,6 +28,8 @@ interface AddVehicleModalProps {
 
 export function AddVehicleModal({ open, onOpenChange, onSuccess }: AddVehicleModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { toast } = useToast()
 
   const {
@@ -47,6 +51,49 @@ export function AddVehicleModal({ open, onOpenChange, onSuccess }: AddVehicleMod
   const vehicleType = watch("type")
   const hasTailLift = watch("hasTailLift")
   const hasTools = watch("hasTools")
+  const imageUrl = watch("imageUrl")
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Check file size (e.g., max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Lỗi",
+        description: "Kích thước ảnh không được vượt quá 5MB",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsUploading(true)
+    try {
+      // Use the uploadFile method from apiClient
+      const response = await apiClient.uploadFile(file, "vehicle")
+      setValue("imageUrl", response.fileUrl)
+      toast({
+        title: "Thành công",
+        description: "Đã tải ảnh lên thành công",
+      })
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải ảnh lên",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploading(false)
+      // Reset file input value to allow re-uploading same file if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setValue("imageUrl", "")
+  }
 
   const onSubmit = async (data: VehicleFormData) => {
     setIsSubmitting(true)
@@ -206,10 +253,60 @@ export function AddVehicleModal({ open, onOpenChange, onSuccess }: AddVehicleMod
             {errors.description && <p className="text-sm text-error">{errors.description.message}</p>}
           </div>
 
-          {/* Image URL */}
-          <div className="space-y-2">
-            <Label htmlFor="imageUrl">URL ảnh xe</Label>
-            <Input id="imageUrl" type="url" placeholder="https://..." {...register("imageUrl")} />
+          {/* Image Upload */}
+          <div className="space-y-3">
+            <Label>Ảnh xe</Label>
+            <div className="border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center min-h-[160px] bg-muted/10">
+              {imageUrl ? (
+                <div className="relative w-full h-[200px] rounded-lg overflow-hidden group">
+                  <Image 
+                    src={imageUrl} 
+                    alt="Vehicle preview" 
+                    fill 
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleRemoveImage}
+                    >
+                      <X className="h-4 w-4 mr-1" /> Xóa ảnh
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center space-y-2">
+                  <div className="bg-muted rounded-full p-3 inline-flex">
+                    <Camera className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? "Đang tải..." : "Tải ảnh lên"}
+                      <Upload className="ml-2 h-4 w-4" />
+                    </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    PNG, JPG, GIF tối đa 5MB
+                  </p>
+                </div>
+              )}
+            </div>
+            <input type="hidden" {...register("imageUrl")} />
             {errors.imageUrl && <p className="text-sm text-error">{errors.imageUrl.message}</p>}
           </div>
 

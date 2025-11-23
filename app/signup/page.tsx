@@ -21,19 +21,25 @@ import {
   Mail,
   MapPin,
   Phone,
+  Search,
   Truck,
   User,
+  ChevronsUpDown,
+  Map,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useAuth } from "@/contexts/auth-context"
 import { useLanguage } from "@/contexts/language-context"
 import { getPasswordStrength } from "@/lib/validators"
 import { normalizeVNPhone } from "@/utils/phone"
 import { useVietnameseAddress } from "@/hooks/use-vietnamese-address"
+import { apiClient } from "@/lib/api-client"
+import { cn } from "@/lib/utils"
 import {
   signupStep2Schema,
   signupStep3Schema,
@@ -46,13 +52,106 @@ import {
 type StepKey = "role" | "contact" | "company" | "security"
 type Role = "customer" | "transport"
 
-// Component for Vietnamese address selection (Province/District/Ward)
-interface CompanyAddressSelectsProps {
+
+interface AddressSelectProps {
+  value?: string
+  onChange: (value: string) => void
+  options: { code: string; name: string }[]
+  placeholder: string
+  searchPlaceholder?: string
+  disabled?: boolean
+  loading?: boolean
+  error?: any
+  icon?: React.ReactNode
+}
+
+function AddressSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  searchPlaceholder = "Tìm kiếm...",
+  disabled,
+  loading,
+  error,
+  icon,
+}: AddressSelectProps) {
+  const [open, setOpen] = useState(false)
+  const selectedItem = options.find((item) => item.code === value)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div className="relative w-full">
+          {icon && (
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 z-10 pointer-events-none">
+              {icon}
+            </div>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            disabled={disabled || loading}
+            className={cn(
+              "w-full h-14 justify-between text-base border-2 transition-all rounded-xl font-normal bg-white hover:bg-white hover:text-neutral-900",
+              icon ? "!pl-12 pr-4" : "px-4",
+              error
+                ? "border-red-500 focus:ring-red-500/20"
+                : "border-neutral-200 hover:border-black focus:border-black focus:ring-black/5",
+              !value && "text-muted-foreground"
+            )}
+          >
+            <span className="truncate text-left">
+              {loading ? "Đang tải..." : selectedItem ? selectedItem.name : placeholder}
+            </span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command filter={(value, search) => {
+          if (value.toLowerCase().includes(search.toLowerCase())) return 1
+          return 0
+        }}>
+          <CommandInput placeholder={searchPlaceholder} />
+          <CommandList>
+            <CommandEmpty>Không tìm thấy</CommandEmpty>
+            <CommandGroup className="max-h-[250px] overflow-y-auto">
+              {options.map((option) => (
+                <CommandItem
+                  key={option.code}
+                  value={option.name}
+                  onSelect={() => {
+                    onChange(option.code)
+                    setOpen(false)
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === option.code ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {option.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// Component for Vietnamese address selection (Province/District/Ward) AND Address Autocomplete
+interface CompanyAddressFieldsProps {
   companyForm: ReturnType<typeof useForm<SignupTransportCompanyFormData>>
   translations: any
 }
 
-function CompanyAddressSelects({ companyForm, translations }: CompanyAddressSelectsProps) {
+function CompanyAddressFields({ companyForm, translations }: CompanyAddressFieldsProps) {
   const currentValues = companyForm.watch()
 
   const {
@@ -67,188 +166,239 @@ function CompanyAddressSelects({ companyForm, translations }: CompanyAddressSele
     wardsError,
   } = useVietnameseAddress(currentValues.city, currentValues.district)
 
-  // Debug logging
+  // Autocomplete state
+  const [openCombobox, setOpenCombobox] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [predictions, setPredictions] = useState<{ description: string; placeId: string }[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+
+  // Debounce search
   useEffect(() => {
-    console.log("🔍 CompanyAddressSelects Debug:", {
-      provinces: provinces?.length || 0,
-      districts: districts?.length || 0,
-      wards: wards?.length || 0,
-      isLoadingProvinces,
-      isLoadingDistricts,
-      isLoadingWards,
-      provincesError: provincesError?.message,
-      districtsError: districtsError?.message,
-      wardsError: wardsError?.message,
-      currentValues: {
-        city: currentValues.city,
-        district: currentValues.district,
-        ward: currentValues.ward,
+    if (!searchQuery || searchQuery.length < 3) {
+      setPredictions([])
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const results = await apiClient.searchPlaces(searchQuery)
+        setPredictions(results)
+      } catch (error) {
+        console.error("Error searching places:", error)
+      } finally {
+        setIsSearching(false)
       }
-    })
-  }, [provinces, districts, wards, isLoadingProvinces, isLoadingDistricts, isLoadingWards, provincesError, districtsError, wardsError, currentValues])
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const handleSelectPlace = async (placeId: string, description: string) => {
+    setOpenCombobox(false)
+    // Update address field immediately with description
+    companyForm.setValue("address", description, { shouldValidate: true, shouldDirty: true })
+    setSearchQuery(description)
+
+    try {
+      const details = await apiClient.getPlaceDetails(placeId)
+      if (details) {
+        // Update address with full description from details if available
+        if (details.description) {
+          companyForm.setValue("address", details.description, { shouldValidate: true, shouldDirty: true })
+          setSearchQuery(details.description)
+        }
+
+        if (details.provinceCode) {
+          companyForm.setValue("city", details.provinceCode, { shouldValidate: true, shouldDirty: true })
+          // Reset district/ward first to avoid invalid combinations
+          companyForm.setValue("district", "")
+          companyForm.setValue("ward", "")
+
+          if (details.districtCode) {
+            // We need a small delay because setting city triggers fetching districts
+            setTimeout(() => {
+              companyForm.setValue("district", details.districtCode!, { shouldValidate: true, shouldDirty: true })
+              if (details.wardCode) {
+                setTimeout(() => {
+                  companyForm.setValue("ward", details.wardCode!, { shouldValidate: true, shouldDirty: true })
+                }, 100)
+              }
+            }, 100)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching place details:", error)
+    }
+  }
 
   const handleProvinceChange = (code: string) => {
-    console.log("Province selected:", code)
-    companyForm.setValue("city", code)
+    companyForm.setValue("city", code, { shouldValidate: true })
     companyForm.setValue("district", "")
     companyForm.setValue("ward", "")
   }
 
   const handleDistrictChange = (code: string) => {
-    console.log("District selected:", code)
-    companyForm.setValue("district", code)
+    companyForm.setValue("district", code, { shouldValidate: true })
     companyForm.setValue("ward", "")
   }
 
   const handleWardChange = (code: string) => {
-    console.log("Ward selected:", code)
-    companyForm.setValue("ward", code)
+    companyForm.setValue("ward", code, { shouldValidate: true })
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {/* Province Select */}
+    <div className="space-y-6">
+      {/* Address Input with Autocomplete */}
       <div className="space-y-2">
-        <Label htmlFor="city" className="text-sm font-semibold text-neutral-700">
-          {translations.city}
+        <Label htmlFor="address" className="text-sm font-semibold text-neutral-700">
+          {translations.address}
         </Label>
-        <Select
-          value={currentValues.city || ""}
-          onValueChange={handleProvinceChange}
-          disabled={isLoadingProvinces}
-        >
-          <SelectTrigger
-            id="city"
-            className={`h-14 text-base border-2 transition-all rounded-xl ${companyForm.formState.errors.city
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                : "border-neutral-200 focus:border-black focus:ring-black/5"
-              }`}
-          >
-            <SelectValue placeholder={isLoadingProvinces ? "Đang tải..." : translations.cityPlaceholder || "Chọn Tỉnh/Thành phố"} />
-          </SelectTrigger>
-          <SelectContent>
-            {provincesError ? (
-              <SelectItem value="error" disabled>
-                Lỗi tải dữ liệu
-              </SelectItem>
-            ) : provinces.length === 0 ? (
-              <SelectItem value="empty" disabled>
-                Không có dữ liệu
-              </SelectItem>
-            ) : (
-              provinces.map((province) => (
-                <SelectItem key={province.code} value={province.code}>
-                  {province.name}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
-        {companyForm.formState.errors.city && (
+        <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+          <PopoverTrigger asChild>
+            <div className="relative">
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 pointer-events-none" aria-hidden="true" />
+              <Input
+                id="address"
+                placeholder={translations.addressPlaceholder}
+                value={currentValues.address || ""}
+                onChange={(e) => {
+                  companyForm.setValue("address", e.target.value, { shouldDirty: true, shouldValidate: true })
+                  setSearchQuery(e.target.value)
+                }}
+                className={`h-14 pl-12 pr-4 text-base border-2 transition-all rounded-xl ${companyForm.formState.errors.address
+                  ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                  : "border-neutral-200 focus:border-black focus:ring-black/5"
+                  }`}
+                onClick={() => setOpenCombobox(true)}
+                autoComplete="off"
+              />
+            </div>
+          </PopoverTrigger>
+          <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <Command shouldFilter={false}>
+              <CommandList>
+                {isSearching ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Đang tìm kiếm...
+                  </div>
+                ) : predictions.length > 0 ? (
+                  <CommandGroup heading="Gợi ý từ bản đồ">
+                    {predictions.map((pred) => (
+                      <CommandItem
+                        key={pred.placeId}
+                        value={pred.placeId}
+                        onSelect={() => handleSelectPlace(pred.placeId, pred.description)}
+                      >
+                        <MapPin className="mr-2 h-4 w-4 opacity-50" />
+                        {pred.description}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ) : searchQuery.length > 2 ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    Không tìm thấy địa chỉ này
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    Nhập ít nhất 3 ký tự để tìm kiếm
+                  </div>
+                )}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        {companyForm.formState.errors.address && (
           <p className="text-sm text-red-600 animate-fade-in-up" role="alert">
-            {companyForm.formState.errors.city.message}
+            {companyForm.formState.errors.address.message}
           </p>
         )}
       </div>
 
-      {/* District Select */}
-      <div className="space-y-2">
-        <Label htmlFor="district" className="text-sm font-semibold text-neutral-700">
-          {translations.district} <span className="text-muted-foreground text-xs">({translations.optionalLabel})</span>
-        </Label>
-        <Select
-          value={currentValues.district || ""}
-          onValueChange={handleDistrictChange}
-          disabled={!currentValues.city || isLoadingDistricts}
-        >
-          <SelectTrigger
-            id="district"
-            className={`h-14 text-base border-2 transition-all rounded-xl ${companyForm.formState.errors.district
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                : "border-neutral-200 focus:border-black focus:ring-black/5"
-              }`}
-          >
-            <SelectValue placeholder={
-              !currentValues.city
-                ? "Chọn Tỉnh/TP trước"
-                : isLoadingDistricts
-                  ? "Đang tải..."
-                  : translations.districtPlaceholder || "Chọn Quận/Huyện"
-            } />
-          </SelectTrigger>
-          <SelectContent>
-            {districtsError ? (
-              <SelectItem value="error" disabled>
-                Lỗi tải dữ liệu
-              </SelectItem>
-            ) : districts.length === 0 ? (
-              <SelectItem value="empty" disabled>
-                Không có dữ liệu
-              </SelectItem>
-            ) : (
-              districts.map((district) => (
-                <SelectItem key={district.code} value={district.code}>
-                  {district.name}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
-        {companyForm.formState.errors.district && (
-          <p className="text-sm text-red-600 animate-fade-in-up" role="alert">
-            {companyForm.formState.errors.district.message}
-          </p>
-        )}
-      </div>
+      <div className="space-y-4">
+        {/* Province Select - Full Width */}
+        <div className="space-y-2">
+          <Label htmlFor="city" className="text-sm font-semibold text-neutral-700">
+            {translations.city}
+          </Label>
+          <AddressSelect
+            value={currentValues.city}
+            onChange={handleProvinceChange}
+            options={provinces}
+            placeholder={isLoadingProvinces ? "Đang tải..." : translations.cityPlaceholder || "Chọn Tỉnh/TP"}
+            searchPlaceholder="Tìm Tỉnh/Thành phố..."
+            loading={isLoadingProvinces}
+            disabled={isLoadingProvinces}
+            error={companyForm.formState.errors.city}
+            icon={<Map className="w-5 h-5" />}
+          />
+          {companyForm.formState.errors.city && (
+            <p className="text-sm text-red-600 animate-fade-in-up" role="alert">
+              {companyForm.formState.errors.city.message}
+            </p>
+          )}
+        </div>
 
-      {/* Ward Select */}
-      <div className="space-y-2">
-        <Label htmlFor="ward" className="text-sm font-semibold text-neutral-700">
-          {translations.ward || "Phường/Xã"} <span className="text-muted-foreground text-xs">({translations.optionalLabel})</span>
-        </Label>
-        <Select
-          value={currentValues.ward || ""}
-          onValueChange={handleWardChange}
-          disabled={!currentValues.district || isLoadingWards}
-        >
-          <SelectTrigger
-            id="ward"
-            className={`h-14 text-base border-2 transition-all rounded-xl ${companyForm.formState.errors.ward
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                : "border-neutral-200 focus:border-black focus:ring-black/5"
-              }`}
-          >
-            <SelectValue placeholder={
-              !currentValues.district
-                ? "Chọn Quận/Huyện trước"
-                : isLoadingWards
-                  ? "Đang tải..."
-                  : translations.wardPlaceholder || "Chọn Phường/Xã"
-            } />
-          </SelectTrigger>
-          <SelectContent>
-            {wardsError ? (
-              <SelectItem value="error" disabled>
-                Lỗi tải dữ liệu
-              </SelectItem>
-            ) : wards.length === 0 ? (
-              <SelectItem value="empty" disabled>
-                Không có dữ liệu
-              </SelectItem>
-            ) : (
-              wards.map((ward) => (
-                <SelectItem key={ward.code} value={ward.code}>
-                  {ward.name}
-                </SelectItem>
-              ))
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* District Select */}
+          <div className="space-y-2">
+            <Label htmlFor="district" className="text-sm font-semibold text-neutral-700">
+              {translations.district} <span className="text-muted-foreground text-xs font-normal">({translations.optionalLabel})</span>
+            </Label>
+            <AddressSelect
+              value={currentValues.district}
+              onChange={handleDistrictChange}
+              options={districts}
+              placeholder={
+                !currentValues.city
+                  ? "Chọn Tỉnh/TP trước"
+                  : isLoadingDistricts
+                    ? "Đang tải..."
+                    : translations.districtPlaceholder || "Chọn Quận/Huyện"
+              }
+              searchPlaceholder="Tìm Quận/Huyện..."
+              loading={isLoadingDistricts}
+              disabled={!currentValues.city || isLoadingDistricts}
+              error={companyForm.formState.errors.district}
+              icon={<MapPin className="w-5 h-5" />}
+            />
+            {companyForm.formState.errors.district && (
+              <p className="text-sm text-red-600 animate-fade-in-up" role="alert">
+                {companyForm.formState.errors.district.message}
+              </p>
             )}
-          </SelectContent>
-        </Select>
-        {companyForm.formState.errors.ward && (
-          <p className="text-sm text-red-600 animate-fade-in-up" role="alert">
-            {companyForm.formState.errors.ward.message}
-          </p>
-        )}
+          </div>
+
+          {/* Ward Select */}
+          <div className="space-y-2">
+            <Label htmlFor="ward" className="text-sm font-semibold text-neutral-700">
+              {translations.ward || "Phường/Xã"} <span className="text-muted-foreground text-xs font-normal">({translations.optionalLabel})</span>
+            </Label>
+            <AddressSelect
+              value={currentValues.ward}
+              onChange={handleWardChange}
+              options={wards}
+              placeholder={
+                !currentValues.district
+                  ? "Chọn Quận/Huyện trước"
+                  : isLoadingWards
+                    ? "Đang tải..."
+                    : translations.wardPlaceholder || "Chọn Phường/Xã"
+              }
+              searchPlaceholder="Tìm Phường/Xã..."
+              loading={isLoadingWards}
+              disabled={!currentValues.district || isLoadingWards}
+              error={companyForm.formState.errors.ward}
+              icon={<Home className="w-5 h-5" />}
+            />
+            {companyForm.formState.errors.ward && (
+              <p className="text-sm text-red-600 animate-fade-in-up" role="alert">
+                {companyForm.formState.errors.ward.message}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -295,6 +445,7 @@ export default function RegisterPage() {
   const currentStepKey = stepKeys[clampedStep - 1] ?? "role"
 
   const password = useWatch({ control: securityForm.control, name: "password" }) || ""
+  const contactEmail = useWatch({ control: contactForm.control, name: "email" }) || ""
   const passwordStrength = getPasswordStrength(password)
 
   const getStepMeta = useCallback((key: StepKey) => {
@@ -736,48 +887,11 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address" className="text-sm font-semibold text-neutral-700">
-                  {translations.address}
-                </Label>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" aria-hidden="true" />
-                  <Input
-                    id="address"
-                    type="text"
-                    placeholder={translations.addressPlaceholder}
-                    className={`h-14 pl-12 pr-4 text-base border-2 transition-all rounded-xl ${companyForm.formState.errors.address
-                        ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
-                        : "border-neutral-200 focus:border-black focus:ring-black/5"
-                      }`}
-                    {...companyForm.register("address")}
-                  />
-                </div>
-                {companyForm.formState.errors.address && (
-                  <p className="text-sm text-red-600 animate-fade-in-up" role="alert">
-                    {companyForm.formState.errors.address.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Vietnamese Address Selects (Province/District/Ward) */}
-              <CompanyAddressSelects
+              {/* Address Fields with Autocomplete */}
+              <CompanyAddressFields
                 companyForm={companyForm}
                 translations={translations}
               />
-
-              <div className="space-y-2">
-                <Label htmlFor="ward" className="text-sm font-semibold text-neutral-700">
-                  {translations.ward} <span className="text-muted-foreground text-xs">({translations.optionalLabel})</span>
-                </Label>
-                <Input
-                  id="ward"
-                  type="text"
-                  placeholder={translations.wardPlaceholder}
-                  className="h-14 px-4 text-base border-2 transition-all rounded-xl border-neutral-200 focus:border-black focus:ring-black/5"
-                  {...companyForm.register("ward")}
-                />
-              </div>
             </form>
           )}
 
@@ -786,6 +900,9 @@ export default function RegisterPage() {
               onSubmit={securityForm.handleSubmit(onSubmit)}
               className="space-y-5 animate-fade-in-up max-w-[520px] mx-auto"
             >
+              {/* Hidden username field to satisfy browser password managers */}
+              <input type="text" name="username" autoComplete="username" value={contactEmail} readOnly hidden />
+
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-semibold text-neutral-700">
                   {translations.password}

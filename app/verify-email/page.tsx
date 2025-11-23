@@ -1,259 +1,204 @@
 "use client"
-
-import { useEffect, useState } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
-import { useLanguage } from "@/contexts/language-context"
+import React, { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { apiClient } from "@/lib/api-client"
+import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2, CheckCircle2, Mail } from "lucide-react"
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import Link from "next/link"
-import { Loader2, CheckCircle2, XCircle, Mail, Shield, Clock, Home } from "lucide-react"
-import { apiClient } from "@/lib/api-client"
 
-/**
- * Email Verification Page
- *
- * Automatically verifies email using token from URL query parameter.
- * Shows loading, success, or error states with appropriate UI.
- *
- * @route /verify-email?token=xxx
- */
-export default function VerifyEmailPage() {
-  const { t } = useLanguage()
-  const searchParams = useSearchParams()
+function VerifyEmailContent() {
   const router = useRouter()
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
-  const [message, setMessage] = useState("")
+  const searchParams = useSearchParams()
+  const { login } = useAuth() // Use login from context to update state
 
-  const translations = t.verifyEmail
+  const [email, setEmail] = useState("")
+  const [otp, setOtp] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState(false)
+  const [verifySuccess, setVerifySuccess] = useState(false) // New state for success message
 
-  // Automatically verify email on component mount
   useEffect(() => {
-    const verifyEmail = async () => {
-      const token = searchParams.get("token")
+    const emailParam = searchParams.get("email")
+    if (emailParam) {
+      setEmail(emailParam)
+    }
+  }, [searchParams])
 
-      // Check if token exists in URL
-      if (!token) {
-        setStatus("error")
-        setMessage("Token xác thực không hợp lệ. Vui lòng kiểm tra link trong email.")
-        return
-      }
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
 
-      try {
-        // Call API to verify email with token
-        await apiClient.verifyEmail(token)
-        setStatus("success")
-        setMessage("Email của bạn đã được xác thực thành công!")
-
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          router.push("/login")
-        }, 3000)
-      } catch (error) {
-        setStatus("error")
-        setMessage(error instanceof Error ? error.message : "Xác thực email thất bại. Token có thể đã hết hạn.")
-      }
+    if (otp.length !== 6) {
+      setError("Vui lòng nhập mã OTP 6 số")
+      return
     }
 
-    verifyEmail()
-  }, [searchParams, router])
+    setLoading(true)
+    try {
+      const response = await apiClient.verifyRegistration(email, otp)
+
+      // Show success message
+      setVerifySuccess(true)
+
+      // Delay redirect slightly so user sees the success message
+      setTimeout(() => {
+        router.push("/login")
+      }, 1500) // 1.5 second delay
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Mã xác thực không hợp lệ")
+      setLoading(false) // Only stop loading on error, keep loading on success until redirect
+    }
+  }
+
+  const handleResend = async () => {
+    setResendLoading(true)
+    setResendSuccess(false)
+    setError("")
+
+    try {
+      await apiClient.resendVerificationOtp(email)
+      setResendSuccess(true)
+      setTimeout(() => setResendSuccess(false), 5000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gửi lại mã thất bại")
+    } finally {
+      setResendLoading(false)
+    }
+  }
+
+  if (!email) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertDescription>
+            Thiếu thông tin email. Vui lòng đăng ký lại.
+            <br />
+            <Link href="/register" className="font-bold underline mt-2 inline-block">
+              Về trang đăng ký
+            </Link>
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex overflow-hidden bg-white">
-      {/* LEFT SIDE - VERIFICATION STATUS */}
-      <div className="relative flex flex-col justify-center bg-white lg:flex-[0_0_52%] w-full lg:w-auto px-6 sm:px-12 lg:px-20 py-12 animate-fade-in-up z-10 lg:clip-path-angled lg:shadow-[20px_0_60px_-15px_rgba(0,0,0,0.12)]">
-        {/* Back to Home Button */}
-        <Link
-          href="/"
-          className="absolute top-6 left-6 sm:top-8 sm:left-8 w-11 h-11 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 flex items-center justify-center transition-all duration-300 hover:-translate-x-1 hover:shadow-md group"
-        >
-          <Home className="w-5 h-5 text-gray-600 group-hover:text-foreground transition-colors" />
-        </Link>
-
-        {/* Content Container */}
-        <div className="max-w-[440px] mx-auto w-full">
-          {/* Status Icon */}
-          <div className="mb-8 animate-fade-in-up flex flex-col items-center text-center">
-            {status === "loading" && (
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 mb-6 shadow-lg shadow-blue-500/5">
-                <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-              </div>
-            )}
-            {status === "success" && (
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 mb-6 shadow-lg shadow-green-500/5 animate-scale-in">
-                <CheckCircle2 className="w-10 h-10 text-green-500" />
-              </div>
-            )}
-            {status === "error" && (
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-red-500/10 to-red-500/5 mb-6 shadow-lg shadow-red-500/5 animate-shake">
-                <XCircle className="w-10 h-10 text-red-500" />
-              </div>
-            )}
-
-            {/* Title */}
-            <h1 className="text-[2rem] font-extrabold mb-2 leading-tight bg-gradient-to-br from-foreground via-gray-800 to-gray-600 bg-clip-text text-transparent">
-              {translations.title}
-            </h1>
-
-            {/* Subtitle based on status */}
-            <p className="text-muted-foreground text-[0.9375rem]">
-              {status === "loading" && translations.verifying}
-              {status === "success" && translations.successSubtitle}
-              {status === "error" && translations.errorSubtitle}
+      <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-20 py-12">
+        <div className="max-w-md w-full space-y-8 animate-fade-in-up">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-green/10 to-accent-green/5 mb-6 shadow-lg shadow-accent-green/5">
+              <Mail className="w-8 h-8 text-accent-green" />
+            </div>
+            <h2 className="text-3xl font-extrabold text-gray-900">
+              Xác thực tài khoản
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Mã xác thực đã được gửi đến email <strong>{email}</strong>
             </p>
           </div>
 
-          {/* Status Message */}
-          <div className="space-y-5 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-            {status === "loading" && (
-              <Alert className="border-blue-200 bg-blue-50 text-blue-900">
-                <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
-                <AlertDescription className="ml-2">{translations.pleaseWait}</AlertDescription>
+          <div className="mt-8 space-y-6">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
-            {status === "success" && (
-              <>
-                <Alert className="border-green-200 bg-green-50 text-green-900">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <AlertDescription className="ml-2">
-                    <strong className="font-semibold">{translations.successTitle}</strong>
-                    <br />
-                    {message}
-                  </AlertDescription>
-                </Alert>
+            {resendSuccess && (
+              <Alert className="border-green-200 bg-green-50 text-green-900">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <AlertDescription className="ml-2">
+                  Đã gửi lại mã xác thực
+                </AlertDescription>
+              </Alert>
+            )}
 
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl p-6 space-y-4 border border-gray-200">
-                  <h3 className="font-semibold text-neutral-900">{translations.nextStepsTitle}</h3>
-                  <ul className="space-y-2 text-sm text-neutral-600">
-                    <li className="flex items-start gap-2">
-                      <span className="text-accent-green mt-0.5 font-bold">•</span>
-                      <span>{translations.step1}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-accent-green mt-0.5 font-bold">•</span>
-                      <span>{translations.step2}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-accent-green mt-0.5 font-bold">•</span>
-                      <span>{translations.step3}</span>
-                    </li>
-                  </ul>
-                </div>
+            {verifySuccess && (
+              <Alert className="border-green-200 bg-green-50 text-green-900 mb-6">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <AlertDescription className="ml-2 font-medium">
+                  Xác thực thành công! Vui lòng đăng nhập để tiếp tục. Đang chuyển hướng đến trang đăng nhập...
+                </AlertDescription>
+              </Alert>
+            )}
 
-                <Button
-                  asChild
-                  className="w-full h-13 bg-gradient-to-br from-foreground via-gray-900 to-gray-800 hover:from-gray-900 hover:via-foreground hover:to-gray-900 text-background font-semibold rounded-xl shadow-lg shadow-gray-900/25 hover:shadow-xl hover:shadow-gray-900/30 transition-all duration-300 hover:-translate-y-0.5"
+            <form onSubmit={handleVerify} className="space-y-6">
+              <div className="flex flex-col items-center space-y-4">
+                <InputOTP
+                  maxLength={6}
+                  value={otp}
+                  onChange={(value) => setOtp(value)}
+                  disabled={loading}
                 >
-                  <Link href="/login">{translations.goToLogin}</Link>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+                <p className="text-xs text-muted-foreground">
+                  Nhập mã 6 số gồm các chữ số
+                </p>
+              </div>
+
+              <div>
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-gradient-to-br from-foreground via-gray-900 to-gray-800 hover:from-gray-900 hover:via-foreground hover:to-gray-900 text-background font-semibold rounded-xl shadow-lg shadow-gray-900/25 hover:shadow-xl hover:shadow-gray-900/30 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 active:shadow-md"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Đang xác thực...
+                    </>
+                  ) : (
+                    "Xác thực"
+                  )}
                 </Button>
-              </>
-            )}
-
-            {status === "error" && (
-              <>
-                <Alert variant="destructive" className="animate-shake">
-                  <XCircle className="h-5 w-5" />
-                  <AlertDescription className="ml-2">
-                    <strong className="font-semibold">{translations.errorTitle}</strong>
-                    <br />
-                    {message}
-                  </AlertDescription>
-                </Alert>
-
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-xl p-6 space-y-4 border border-gray-200">
-                  <h3 className="font-semibold text-neutral-900">{translations.troubleshootTitle}</h3>
-                  <ul className="space-y-2 text-sm text-neutral-600">
-                    <li className="flex items-start gap-2">
-                      <span className="text-accent-green mt-0.5 font-bold">•</span>
-                      <span>{translations.tip1}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-accent-green mt-0.5 font-bold">•</span>
-                      <span>{translations.tip2}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-accent-green mt-0.5 font-bold">•</span>
-                      <span>{translations.tip3}</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="flex-1 h-13 border-2 border-gray-200 hover:border-foreground rounded-xl font-semibold transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 bg-transparent"
-                  >
-                    <Link href="/signup">{translations.signUpAgain}</Link>
-                  </Button>
-                  <Button
-                    asChild
-                    className="flex-1 h-13 bg-gradient-to-br from-foreground via-gray-900 to-gray-800 hover:from-gray-900 hover:via-foreground hover:to-gray-900 text-background font-semibold rounded-xl shadow-lg shadow-gray-900/25 hover:shadow-xl hover:shadow-gray-900/30 transition-all duration-300 hover:-translate-y-0.5"
-                  >
-                    <Link href="/login">{translations.goToLogin}</Link>
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* RIGHT SIDE - FEATURES */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-foreground via-gray-900 to-gray-800 text-background relative overflow-hidden animate-fade-in-up ml-[-3%]">
-        {/* Gradient Overlays */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(16,185,129,0.12)_0%,transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(16,185,129,0.08)_0%,transparent_40%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_0%,rgba(0,0,0,0.1)_100%)]" />
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-20 w-full">
-          {/* Floating Icon */}
-          <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mb-10 animate-float shadow-2xl shadow-black/20 border border-white/10">
-            <Mail className="w-12 h-12" />
-          </div>
-
-          {/* Title */}
-          <h2
-            className="text-[1.75rem] font-bold mb-4 leading-tight animate-fade-in-up"
-            style={{ animationDelay: "0.2s" }}
-          >
-            {translations.featuresTitle}
-          </h2>
-
-          {/* Description */}
-          <p
-            className="text-[0.9375rem] leading-relaxed text-white/90 mb-12 max-w-md animate-fade-in-up"
-            style={{ animationDelay: "0.3s" }}
-          >
-            {translations.featuresDesc}
-          </p>
-
-          {/* Feature Cards */}
-          <div className="flex flex-col items-center gap-6 animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
-            <div className="flex items-center gap-5 group cursor-default">
-              <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center transition-all duration-300 group-hover:-translate-y-1 group-hover:scale-105 group-hover:bg-white/20 group-hover:shadow-xl group-hover:shadow-black/20 border border-white/10">
-                <Shield className="w-7 h-7" />
               </div>
-              <div className="text-[1rem] font-semibold">{translations.feature1}</div>
-            </div>
+            </form>
 
-            <div className="flex items-center gap-5 group cursor-default">
-              <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center transition-all duration-300 group-hover:-translate-y-1 group-hover:scale-105 group-hover:bg-white/20 group-hover:shadow-xl group-hover:shadow-black/20 border border-white/10">
-                <Clock className="w-7 h-7" />
+            <div className="flex flex-col items-center gap-4">
+              <div className="text-sm text-center">
+                Chưa nhận được mã?{" "}
+                <button
+                  onClick={handleResend}
+                  disabled={resendLoading}
+                  className="font-semibold text-accent-green hover:text-accent-green-dark hover:underline transition-colors disabled:opacity-50"
+                >
+                  {resendLoading ? "Đang gửi..." : "Gửi lại mã"}
+                </button>
               </div>
-              <div className="text-[1rem] font-semibold">{translations.feature2}</div>
-            </div>
 
-            <div className="flex items-center gap-5 group cursor-default">
-              <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center transition-all duration-300 group-hover:-translate-y-1 group-hover:scale-105 group-hover:bg-white/20 group-hover:shadow-xl group-hover:shadow-black/20 border border-white/10">
-                <Mail className="w-7 h-7" />
-              </div>
-              <div className="text-[1rem] font-semibold">{translations.feature3}</div>
+              <Link
+                href="/login"
+                className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                Quay về đăng nhập
+              </Link>
             </div>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <VerifyEmailContent />
+    </Suspense>
   )
 }

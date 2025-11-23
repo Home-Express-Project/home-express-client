@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -40,11 +40,7 @@ export function DisputeDetail({ disputeId, currentUserId, onAttachEvidence }: Di
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadDispute()
-  }, [disputeId])
-
-  const loadDispute = async () => {
+  const loadDispute = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -56,7 +52,11 @@ export function DisputeDetail({ disputeId, currentUserId, onAttachEvidence }: Di
     } finally {
       setLoading(false)
     }
-  }
+  }, [disputeId])
+
+  useEffect(() => {
+    loadDispute()
+  }, [loadDispute])
 
   if (loading) {
     return (

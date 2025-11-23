@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,7 +24,7 @@ export function CounterOfferList({ quotationId, onCounterOfferUpdate }: CounterO
   const [selectedCounterOffer, setSelectedCounterOffer] = useState<CounterOffer | null>(null)
   const [showRespondDialog, setShowRespondDialog] = useState(false)
 
-  const loadCounterOffers = async () => {
+  const loadCounterOffers = useCallback(async () => {
     try {
       const data = await apiClient.getCounterOffersByQuotation(quotationId)
       setCounterOffers(data)
@@ -34,11 +34,11 @@ export function CounterOfferList({ quotationId, onCounterOfferUpdate }: CounterO
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [quotationId])
 
   useEffect(() => {
     loadCounterOffers()
-  }, [quotationId])
+  }, [loadCounterOffers])
 
   const handleRespond = (counterOffer: CounterOffer) => {
     setSelectedCounterOffer(counterOffer)

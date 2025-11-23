@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
@@ -36,7 +36,7 @@ import { useLocationNames } from "@/hooks/use-location-names"
 import { canCancelBooking, calculateCancellationFee } from "@/lib/booking-utils"
 import { apiClient } from "@/lib/api-client"
 import { toast } from "sonner"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { BookingReviewSection } from "@/components/bookings/booking-review-section"
 import { navItems } from "@/lib/customer-nav-config"
 import { useBookingEvents } from "@/hooks/use-booking-events"
@@ -61,7 +61,7 @@ export default function BookingDetailPage() {
   const [isLoadingDisputes, setIsLoadingDisputes] = useState(false)
 
   // Load evidence
-  const loadEvidence = async () => {
+  const loadEvidence = useCallback(async () => {
     if (!bookingId) return
 
     setIsLoadingEvidence(true)
@@ -74,10 +74,10 @@ export default function BookingDetailPage() {
     } finally {
       setIsLoadingEvidence(false)
     }
-  }
+  }, [bookingId])
 
   // Load disputes
-  const loadDisputes = async () => {
+  const loadDisputes = useCallback(async () => {
     if (!bookingId) return
 
     setIsLoadingDisputes(true)
@@ -90,14 +90,14 @@ export default function BookingDetailPage() {
     } finally {
       setIsLoadingDisputes(false)
     }
-  }
+  }, [bookingId])
 
   useEffect(() => {
     if (bookingId) {
       loadEvidence()
       loadDisputes()
     }
-  }, [bookingId])
+  }, [bookingId, loadEvidence, loadDisputes])
 
   // Setup real-time SSE updates
   const { isConnected } = useBookingEvents({
@@ -215,11 +215,6 @@ export default function BookingDetailPage() {
 
   const handleBackToDisputeList = () => {
     setSelectedDispute(null)
-  } {
-      toast.error("Không thể xóa minh chứng", {
-        description: error instanceof Error ? error.message : "Vui lòng thử lại sau",
-      })
-    }
   }
 
   // Check if user can upload evidence (only for certain statuses)

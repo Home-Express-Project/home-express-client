@@ -12,10 +12,13 @@ export type AuditAction =
   | "REVIEW_FLAGGED"
   | "OUTBOX_EVENT_RETRIED"
   | "OUTBOX_EVENT_DELETED"
+  | "BID_ACCEPTED"
+  | "BID_REJECTED"
+  | "EXCEPTION_UPDATED"
 
 interface AuditLogEntry {
   action: AuditAction
-  target_type: "USER" | "TRANSPORT" | "CATEGORY" | "REVIEW" | "OUTBOX_EVENT"
+  target_type: "USER" | "TRANSPORT" | "CATEGORY" | "REVIEW" | "OUTBOX_EVENT" | "BID" | "EXCEPTION"
   target_id?: number
   details?: Record<string, any>
 }

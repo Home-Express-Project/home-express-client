@@ -19,7 +19,7 @@ export function HeroSection() {
           <div className="animate-fade-in-up">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 shadow-sm">
               <CheckCircle className="h-4 w-4 text-[color:var(--color-accent-green)]" />
-              <span className="text-sm font-semibold text-gray-700">Đánh giá 4.9/5 từ 10,000+ khách hàng</span>
+              <span className="text-sm font-semibold text-gray-700">Đánh giá 4.8/5 từ 100+ khách hàng</span>
             </div>
 
             <h1 className="mb-6 text-balance text-[clamp(2.5rem,6vw,4rem)] font-black leading-[1.05] tracking-tight text-black">
@@ -46,8 +46,7 @@ export function HeroSection() {
               </span>
             </h1>
             <p className="mb-10 max-w-xl text-pretty text-lg leading-relaxed text-gray-600">
-              Nền tảng chuyển nhà hàng đầu cho khách hàng, đội ngũ chuyển nhà và quản trị viên. Đặt lịch chuyển nhà,
-              theo dõi tiến độ và trải nghiệm dịch vụ chuyển nhà tốt nhất.
+              Nền tảng chuyển nhà hàng đầu cho khách hàng, đội ngũ chuyển nhà. Đặt lịch chuyển nhà, theo dõi tiến độ và trải nghiệm dịch vụ chuyển nhà tốt nhất.
             </p>
 
             {/* CTA Buttons */}
@@ -76,14 +75,14 @@ export function HeroSection() {
               <div className="group relative pl-6">
                 <div className="absolute left-0 top-0 h-full w-1 rounded-full bg-gradient-to-b from-[color:var(--color-accent-green)] to-[color:var(--color-accent-green-dark)]" />
                 <div className="mb-2 text-5xl font-black leading-none text-black transition-transform group-hover:scale-105">
-                  10K+
+                  100+
                 </div>
                 <div className="text-sm font-semibold uppercase tracking-wide text-gray-500">Khách hàng tin tưởng</div>
               </div>
               <div className="group relative pl-6">
                 <div className="absolute left-0 top-0 h-full w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-600" />
                 <div className="mb-2 text-5xl font-black leading-none text-black transition-transform group-hover:scale-105">
-                  500+
+                  20+
                 </div>
                 <div className="text-sm font-semibold uppercase tracking-wide text-gray-500">Đội ngũ chuyển nhà</div>
               </div>
@@ -99,18 +98,18 @@ export function HeroSection() {
 
           {/* Right Image */}
           <div className="animate-fade-in-up flex justify-center lg:justify-end">
-            <div className="group relative max-w-lg transition-transform duration-700 hover:-translate-y-3">
+            <div className="group relative w-full max-w-2xl lg:max-w-3xl xl:max-w-4xl transition-transform duration-700 hover:-translate-y-3">
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[color:var(--color-accent-green)]/20 to-blue-500/20 blur-2xl transition-opacity group-hover:opacity-75" />
 
               <div className="relative overflow-hidden rounded-3xl shadow-2xl ring-1 ring-gray-200/50">
                 <Image
                   src="/professional-moving-service-truck-with-team-loadin.jpg"
                   alt="Xe chuyển nhà Home Express với đội ngũ chuyên nghiệp"
-                  width={500}
-                  height={650}
+                  width={1080}
+                  height={560}
                   className="h-auto w-full object-cover transition-transform duration-700 group-hover:scale-105"
                   priority
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 500px"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 55vw, 720px"
                 />
               </div>
 
@@ -130,8 +129,8 @@ export function HeroSection() {
                   <Radio className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-black">Theo dõi trực tiếp</div>
-                  <div className="text-xs text-gray-500">Real-time GPS</div>
+                  <div className="text-sm font-bold text-black">Hỗ Trợ nhanh chóng</div>
+                  <div className="text-xs text-gray-500">Real-time Support</div>
                 </div>
               </div>
             </div>

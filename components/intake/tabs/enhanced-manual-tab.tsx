@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -50,7 +50,7 @@ function SmartCombobox({
           />
           <CommandList>
             <CommandEmpty className="py-3 px-4 text-sm">
-               <p className="text-muted-foreground mb-2 text-xs">Không tìm thấy "{inputValue}"</p>
+               <p className="text-muted-foreground mb-2 text-xs">Không tìm thấy &quot;{inputValue}&quot;</p>
                <Button 
                  variant="secondary" 
                  size="sm" 
@@ -60,7 +60,7 @@ function SmartCombobox({
                     setOpen(false)
                  }}
                >
-                 + Tạo mới "{inputValue}"
+                 + Tạo mới &quot;{inputValue}&quot;
                </Button>
             </CommandEmpty>
             <CommandGroup>
@@ -145,13 +145,13 @@ export function EnhancedManualTab({
   })
 
   // Initialize with one item if empty
-  useEffect(() => {
-    if (items.length === 0) {
-      // setItems([createEmptyItem(true)])
-    }
-  }, [])
+  // useEffect(() => {
+  //   if (items.length === 0) {
+  //     // setItems([createEmptyItem(true)])
+  //   }
+  // }, [])
 
-  const validateItem = (item: ManualItem): boolean => {
+  const validateItem = useCallback((item: ManualItem): boolean => {
     // Rule: Name is required OR (Brand + Model is required)
     // Rule: Quantity >= 1
     const hasName = !!item.name.trim()
@@ -159,16 +159,13 @@ export function EnhancedManualTab({
     const hasIdentity = hasName || hasBrandModel
     const validQty = item.quantity >= 1
     return hasIdentity && validQty
-  }
+  }, [])
 
   // Update validation status whenever fields change
+  const validationDeps = JSON.stringify(items.map(i => ({ n: i.name, b: i.brand, m: i.model, q: i.quantity })))
   useEffect(() => {
     setItems(prev => prev.map(item => ({ ...item, isValid: validateItem(item) })))
-  }, [
-    // Dependency list explicitly to avoid infinite loop
-    // We stringify items mapped to their validation-relevant fields
-    JSON.stringify(items.map(i => ({ n: i.name, b: i.brand, m: i.model, q: i.quantity })))
-  ])
+  }, [validationDeps, validateItem])
 
   const handleQuickParse = async () => {
     if (!quickText.trim()) return
@@ -222,6 +219,7 @@ export function EnhancedManualTab({
   }
 
   // Search brands logic (throttled)
+  const brandDeps = items.map(i => i.brand).join(",")
   useEffect(() => {
     items.forEach((item) => {
       if (!item.brand || brandOptions[item.id]) return // Skip if empty or already loaded
@@ -237,13 +235,14 @@ export function EnhancedManualTab({
       }, 500)
       return () => clearTimeout(timer)
     })
-  }, [items.map(i => i.brand).join(",")])
+  }, [brandDeps, items, brandOptions])
 
   // Search models logic (throttled)
+  const modelDeps = items.map(i => `${i.brand}:${i.model}`).join(",")
   useEffect(() => {
     items.forEach((item) => {
       if (!item.brand || !item.model || modelOptions[item.id]) return 
-
+    
       const timer = setTimeout(async () => {
         try {
           const data = await apiClient.searchModels(item.model, item.brand)
@@ -256,7 +255,7 @@ export function EnhancedManualTab({
       }, 500)
       return () => clearTimeout(timer)
     })
-  }, [items.map(i => `${i.brand}:${i.model}`).join(",")])
+  }, [modelDeps, items, modelOptions])
 
 
   const addRow = () => {
@@ -344,7 +343,7 @@ export function EnhancedManualTab({
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
                <h3 className="font-medium text-sm mb-1">Thêm nhanh</h3>
-               <p className="text-xs text-muted-foreground">Nhập thủ công hoặc dán danh sách (Ví dụ: "1 tủ lạnh, 2 sofa")</p>
+               <p className="text-xs text-muted-foreground">Nhập thủ công hoặc dán danh sách (Ví dụ: &quot;1 tủ lạnh, 2 sofa&quot;)</p>
             </div>
             <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={addRow}>

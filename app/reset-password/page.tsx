@@ -18,7 +18,8 @@ export default function ResetPasswordPage() {
   const { t } = useLanguage()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [token, setToken] = useState("")
+  const [email, setEmail] = useState("")
+  const [code, setCode] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -30,11 +31,14 @@ export default function ResetPasswordPage() {
   const translations = t.resetPassword
 
   useEffect(() => {
-    const tokenParam = searchParams.get("token")
-    if (!tokenParam) {
-      setError("Link đặt lại mật khẩu không hợp lệ")
+    const emailParam = searchParams.get("email")
+    const codeParam = searchParams.get("code")
+
+    if (!emailParam || !codeParam) {
+      setError("Thông tin xác thực không hợp lệ")
     } else {
-      setToken(tokenParam)
+      setEmail(emailParam)
+      setCode(codeParam)
     }
   }, [searchParams])
 
@@ -55,7 +59,7 @@ export default function ResetPasswordPage() {
 
     setLoading(true)
     try {
-      await apiClient.resetPassword(token, password)
+      await apiClient.resetPassword(email, code, password)
       setSuccess(true)
       setTimeout(() => {
         router.push("/login")
@@ -67,7 +71,7 @@ export default function ResetPasswordPage() {
     }
   }
 
-  if (!token && !error) {
+  if ((!email || !code) && !error) {
     return null
   }
 
@@ -110,7 +114,7 @@ export default function ResetPasswordPage() {
                 </AlertDescription>
               </Alert>
             ) : (
-              token && (
+              email && code && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-sm font-semibold text-neutral-700">

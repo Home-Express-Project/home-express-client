@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://home-express.vercel.app"),
   title: "Home Express - Dịch vụ chuyển nhà chuyên nghiệp",
   description:
-    "Nền tảng chuyển nhà hàng đầu cho khách hàng, đội ngũ chuyển nhà và quản trị viên. Đặt lịch chuyển nhà, theo dõi tiến độ và trải nghiệm dịch vụ chuyển nhà tốt nhất.",
+    "Nền tảng chuyển nhà hàng đầu cho khách hàng, đội ngũ chuyển nhà. Đặt lịch chuyển nhà, theo dõi tiến độ và trải nghiệm dịch vụ chuyển nhà tốt nhất.",
   generator: "v0.app",
   alternates: {
     canonical: "/",

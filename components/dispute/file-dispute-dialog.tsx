@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   Dialog,
   DialogContent,
@@ -78,6 +78,19 @@ export function FileDisputeDialog({
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  const loadEvidence = useCallback(async () => {
+    try {
+      setLoadingEvidence(true)
+      const response = await apiClient.getBookingEvidence(bookingId)
+      setEvidence(response.evidence)
+    } catch (err: any) {
+      console.error("Failed to load evidence:", err)
+      toast.error("Failed to load evidence")
+    } finally {
+      setLoadingEvidence(false)
+    }
+  }, [bookingId])
+
   useEffect(() => {
     if (open) {
       loadEvidence()
@@ -89,20 +102,7 @@ export function FileDisputeDialog({
       setSelectedEvidenceIds([])
       setErrors({})
     }
-  }, [open, bookingId])
-
-  const loadEvidence = async () => {
-    try {
-      setLoadingEvidence(true)
-      const response = await apiClient.getBookingEvidence(bookingId)
-      setEvidence(response.evidence)
-    } catch (err: any) {
-      console.error("Failed to load evidence:", err)
-      toast.error("Failed to load evidence")
-    } finally {
-      setLoadingEvidence(false)
-    }
-  }
+  }, [open, loadEvidence])
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
