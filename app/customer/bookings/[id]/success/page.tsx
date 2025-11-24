@@ -39,7 +39,7 @@ export default function BookingSuccessPage() {
 
   if (isLoading) {
     return (
-      <DashboardLayout navItems={navItems} title="Dang tai booking">
+      <DashboardLayout navItems={navItems} title="Đang tải booking">
         <div className="max-w-4xl mx-auto px-6 py-10">
           <Skeleton className="h-64 w-full" />
         </div>
@@ -49,10 +49,10 @@ export default function BookingSuccessPage() {
 
   if (!booking) {
     return (
-      <DashboardLayout navItems={navItems} title="Booking khong ton tai">
+      <DashboardLayout navItems={navItems} title="Booking không tồn tại">
         <div className="max-w-4xl mx-auto px-6 py-10">
           <Alert variant="destructive">
-            <AlertDescription>KhÃ´ng tÃ¬m tháº¥y booking</AlertDescription>
+            <AlertDescription>Không tìm thấy booking</AlertDescription>
           </Alert>
         </div>
       </DashboardLayout>
@@ -79,9 +79,9 @@ export default function BookingSuccessPage() {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-success/10 mb-4">
             <CheckCircle2 className="h-10 w-10 text-success" />
           </div>
-          <h1 className="text-4xl font-bold tracking-tight">Táº¡o booking thÃ nh cÃ´ng!</h1>
+          <h1 className="text-4xl font-bold tracking-tight">Tạo booking thành công!</h1>
           <p className="text-lg text-muted-foreground">
-            Booking #{bookingId} Ä‘Ã£ Ä‘Æ°á»£c táº¡o vÃ  gá»­i Ä‘áº¿n cÃ¡c Ä‘Æ¡n vá»‹ váº­n chuyá»ƒn
+            Booking #{bookingId} đã được tạo và gửi đến các đơn vị vận chuyển
           </p>
         </div>
 
@@ -90,15 +90,15 @@ export default function BookingSuccessPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
-              ThÃ´ng bÃ¡o Ä‘áº¿n Ä‘Æ¡n vá»‹ váº­n chuyá»ƒn
+              Thông báo đến đơn vị vận chuyển
             </CardTitle>
-            <CardDescription>Há»‡ thá»‘ng Ä‘ang tá»± Ä‘á»™ng gá»­i thÃ´ng bÃ¡o Ä‘áº¿n cÃ¡c Ä‘Æ¡n vá»‹ phÃ¹ há»£p</CardDescription>
+            <CardDescription>Hệ thống đang tự động gửi thông báo đến các đơn vị phù hợp</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isNotifying ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Äang gá»­i thÃ´ng bÃ¡o...</span>
+                  <span className="text-sm font-medium">Đang gửi thông báo...</span>
                   <Badge variant="secondary">
                     <Clock className="h-3 w-3 mr-1 animate-spin" />
                     {notificationsSent}/5
@@ -117,7 +117,7 @@ export default function BookingSuccessPage() {
                       ) : (
                         <div className="h-5 w-5 rounded-full border-2 border-muted-foreground" />
                       )}
-                      <span className="text-sm">ÄÆ¡n vá»‹ váº­n chuyá»ƒn #{i}</span>
+                      <span className="text-sm">Đơn vị vận chuyển #{i}</span>
                     </div>
                   ))}
                 </div>
@@ -126,7 +126,7 @@ export default function BookingSuccessPage() {
               <Alert className="bg-success/10 border-success">
                 <CheckCircle2 className="h-4 w-4 text-success" />
                 <AlertDescription className="text-success-foreground">
-                  ÄÃ£ gá»­i thÃ´ng bÃ¡o thÃ nh cÃ´ng Ä‘áº¿n {notificationsSent} Ä‘Æ¡n vá»‹ váº­n chuyá»ƒn phÃ¹ há»£p!
+                  Đã gửi thông báo thành công đến {notificationsSent} đơn vị vận chuyển phù hợp!
                 </AlertDescription>
               </Alert>
             )}
@@ -136,7 +136,7 @@ export default function BookingSuccessPage() {
         {/* Booking Summary */}
         <Card>
           <CardHeader>
-            <CardTitle>ThÃ´ng tin booking</CardTitle>
+            <CardTitle>Thông tin booking</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Addresses */}
@@ -144,14 +144,14 @@ export default function BookingSuccessPage() {
               <div className="flex gap-3">
                 <MapPin className="h-5 w-5 text-primary mt-0.5" />
                 <div className="flex-1">
-                  <p className="font-medium mb-1">Äá»‹a chá»‰ Ä‘Ã³n</p>
+                  <p className="font-medium mb-1">Địa chỉ đón</p>
                   <p className="text-sm text-muted-foreground">{pickupAddress}</p>
                 </div>
               </div>
               <div className="flex gap-3">
                 <MapPin className="h-5 w-5 text-destructive mt-0.5" />
                 <div className="flex-1">
-                  <p className="font-medium mb-1">Äá»‹a chá»‰ giao</p>
+                  <p className="font-medium mb-1">Địa chỉ giao</p>
                   <p className="text-sm text-muted-foreground">{deliveryAddress}</p>
                 </div>
               </div>
@@ -163,7 +163,7 @@ export default function BookingSuccessPage() {
             <div className="flex gap-3">
               <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div className="flex-1">
-                <p className="font-medium mb-1">Thá»i gian Ä‘Ã³n</p>
+                <p className="font-medium mb-1">Thời gian đón</p>
                 <p className="text-sm text-muted-foreground">
                   {new Date(preferredDate).toLocaleDateString("vi-VN", {
                     weekday: "long",
@@ -173,10 +173,10 @@ export default function BookingSuccessPage() {
                   })}
                 </p>
                 <Badge variant="outline" className="mt-2">
-                  {preferredTimeSlot === "MORNING" && "Buá»•i sÃ¡ng (7h-12h)"}
-                  {preferredTimeSlot === "AFTERNOON" && "Buá»•i chiá»u (12h-17h)"}
-                  {preferredTimeSlot === "EVENING" && "Buá»•i tá»‘i (17h-21h)"}
-                  {preferredTimeSlot === "FLEXIBLE" && "Linh hoáº¡t"}
+                  {preferredTimeSlot === "MORNING" && "Buổi sáng (7h-12h)"}
+                  {preferredTimeSlot === "AFTERNOON" && "Buổi chiều (12h-17h)"}
+                  {preferredTimeSlot === "EVENING" && "Buổi tối (17h-21h)"}
+                  {preferredTimeSlot === "FLEXIBLE" && "Linh hoạt"}
                 </Badge>
               </div>
             </div>
@@ -187,7 +187,7 @@ export default function BookingSuccessPage() {
             <div className="flex gap-3">
               <Package className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div className="flex-1">
-                <p className="font-medium mb-2">Do vat ({bookingItems.length} mon)</p>
+                <p className="font-medium mb-2">Đồ vật ({bookingItems.length} món)</p>
                 <div className="space-y-2">
                   {bookingItems.map((item, index) => {
                     const itemName = item.name ?? item.item_name ?? `Item ${index + 1}`
@@ -212,8 +212,8 @@ export default function BookingSuccessPage() {
         {/* Next Steps */}
         <Card>
           <CardHeader>
-            <CardTitle>BÆ°á»›c tiáº¿p theo</CardTitle>
-            <CardDescription>Nhá»¯ng gÃ¬ sáº½ xáº£y ra sau Ä‘Ã¢y</CardDescription>
+            <CardTitle>Bước tiếp theo</CardTitle>
+            <CardDescription>Những gì sẽ xảy ra sau đây</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-4">
@@ -221,9 +221,9 @@ export default function BookingSuccessPage() {
                 1
               </div>
               <div className="flex-1">
-                <h4 className="font-semibold mb-1">Chá» bÃ¡o giÃ¡</h4>
+                <h4 className="font-semibold mb-1">Chờ báo giá</h4>
                 <p className="text-sm text-muted-foreground">
-                  CÃ¡c Ä‘Æ¡n vá»‹ váº­n chuyá»ƒn sáº½ xem thÃ´ng tin vÃ  gá»­i bÃ¡o giÃ¡ trong vÃ²ng 1-2 giá»
+                  Các đơn vị vận chuyển sẽ xem thông tin và gửi báo giá trong vòng 1-2 giờ
                 </p>
               </div>
             </div>
@@ -233,9 +233,9 @@ export default function BookingSuccessPage() {
                 2
               </div>
               <div className="flex-1">
-                <h4 className="font-semibold mb-1">So sÃ¡nh vÃ  chá»n</h4>
+                <h4 className="font-semibold mb-1">So sánh và chọn</h4>
                 <p className="text-sm text-muted-foreground">
-                  Báº¡n sáº½ nháº­n Ä‘Æ°á»£c thÃ´ng bÃ¡o khi cÃ³ bÃ¡o giÃ¡ má»›i. So sÃ¡nh giÃ¡ vÃ  dá»‹ch vá»¥ Ä‘á»ƒ chá»n Ä‘Æ¡n vá»‹ phÃ¹ há»£p
+                  Bạn sẽ nhận được thông báo khi có báo giá mới. So sánh giá và dịch vụ để chọn đơn vị phù hợp
                 </p>
               </div>
             </div>
@@ -245,9 +245,9 @@ export default function BookingSuccessPage() {
                 3
               </div>
               <div className="flex-1">
-                <h4 className="font-semibold mb-1">XÃ¡c nháº­n vÃ  thanh toÃ¡n</h4>
+                <h4 className="font-semibold mb-1">Xác nhận và thanh toán</h4>
                 <p className="text-sm text-muted-foreground">
-                  Sau khi cháº¥p nháº­n bÃ¡o giÃ¡, há»£p Ä‘á»“ng sáº½ Ä‘Æ°á»£c táº¡o vÃ  báº¡n cÃ³ thá»ƒ thanh toÃ¡n Ä‘áº·t cá»c
+                  Sau khi chấp nhận báo giá, hợp đồng sẽ được tạo và bạn có thể thanh toán đặt cọc
                 </p>
               </div>
             </div>
@@ -257,10 +257,10 @@ export default function BookingSuccessPage() {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4">
           <Button variant="outline" className="flex-1 bg-transparent" onClick={() => router.push("/customer/bookings")}>
-            Xem táº¥t cáº£ booking
+            Xem tất cả booking
           </Button>
           <Button className="flex-1" onClick={() => router.push(`/customer/bookings/${bookingId}`)}>
-            Xem chi tiáº¿t booking
+            Xem chi tiết booking
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
@@ -273,7 +273,7 @@ export default function BookingSuccessPage() {
           <Alert className="bg-primary/5 border-primary/20">
             <Sparkles className="h-4 w-4 text-primary" />
             <AlertDescription>
-              Booking nÃ y Ä‘Æ°á»£c táº¡o vá»›i sá»± há»— trá»£ cá»§a AI Image Scanning, giÃºp tiáº¿t kiá»‡m thá»i gian vÃ  tÄƒng Ä‘á»™ chÃ­nh xÃ¡c
+              Booking này được tạo với sự hỗ trợ của AI Scanning, giúp tiết kiệm thời gian và tăng độ chính xác
             </AlertDescription>
           </Alert>
         )}

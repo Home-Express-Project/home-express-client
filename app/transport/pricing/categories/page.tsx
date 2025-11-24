@@ -13,7 +13,6 @@ import { useCategoryPricing } from "@/hooks/use-vehicles"
 import { useToast } from "@/hooks/use-toast"
 import { apiClient } from "@/lib/api-client"
 import { formatVND } from "@/lib/format"
-import { useAuth } from "@/contexts/auth-context"
 
 const navItems = [
   { label: "Tổng quan", href: "/transport", icon: "LayoutDashboard" },
@@ -25,9 +24,9 @@ const navItems = [
 ]
 
 export default function CategoryPricingPage() {
-  const { user } = useAuth()
   const { categories, isLoading: categoriesLoading } = useCategories({ isActive: true })
-  const { pricingRules, isLoading: pricingLoading, mutate } = useCategoryPricing(user?.user_id)
+  // Don't pass transportId - the backend will use authenticated user's transport ID
+  const { pricingRules, isLoading: pricingLoading, mutate } = useCategoryPricing()
   const { toast } = useToast()
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set())
   const [pricingData, setPricingData] = useState<Record<number, any>>({})
@@ -53,19 +52,10 @@ export default function CategoryPricingPage() {
       return
     }
 
-    if (!user?.user_id) {
-      toast({
-        title: "Lỗi",
-        description: "Không tìm thấy thông tin tài khoản vận chuyển",
-        variant: "destructive",
-      })
-      return
-    }
-
     setSavingIds((prev) => new Set(prev).add(categoryId))
     try {
+      // Backend will automatically use authenticated transport user's ID
       await apiClient.setCategoryPricing({
-        transportId: user.user_id,
         categoryId,
         pricePerUnitVnd: data.pricePerUnit,
         fragileMultiplier: data.fragileMultiplier || 1.2,

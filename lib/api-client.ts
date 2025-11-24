@@ -521,14 +521,14 @@ class ApiClient {
           // Try to extract meaningful error message from various common formats
           // Spring Boot 3 Problem Details uses "title" and "detail"
           // Standard JSON error uses "error" or "message"
-          const errorMsg = 
-            data.error || 
-            data.message || 
-            data.detail || 
-            data.title || 
-            (response.status === 401 ? "Unauthorized" : 
-             response.status === 403 ? "Forbidden" : 
-             response.statusText) || 
+          const errorMsg =
+            data.error ||
+            data.message ||
+            data.detail ||
+            data.title ||
+            (response.status === 401 ? "Unauthorized" :
+              response.status === 403 ? "Forbidden" :
+                response.statusText) ||
             `Request failed with status ${response.status}`
 
           const error: any = new Error(errorMsg)
@@ -763,10 +763,10 @@ class ApiClient {
       // [DEBUG] Log login response structure
       console.groupCollapsed("🔐 [API Debug] Login Response Processing")
       console.log("Raw response keys:", Object.keys(response))
-      
+
       const token = response.accessToken || response.token
       const refreshToken = response.refreshToken
-      
+
       console.log("Extracted Token:", token ? "Found ✅" : "Not Found ❌")
       console.log("Extracted Refresh Token:", refreshToken ? "Found ✅" : "Not Found ❌")
 
@@ -776,7 +776,7 @@ class ApiClient {
       } else {
         console.warn("⚠️ No access token found in login response to save!")
       }
-      
+
       if (refreshToken) {
         localStorage.setItem("refresh_token", refreshToken)
       }
@@ -1948,23 +1948,32 @@ class ApiClient {
   // --------------------------------------------------------------------------
 
   /**
-   * Get pricing rules for categories
+   * Get pricing rules for categories (for authenticated transport user)
    */
   async getCategoryPricing(transportId?: number) {
-    const params = transportId ? `?transportId=${transportId}` : ""
-    return this.request<{
-      success: boolean
-      data: {
-        pricingRules: any[]
-      }
-    }>(`/transport/pricing/categories${params}`)
+    // If transportId is provided, use the admin endpoint
+    // Otherwise, use the transport-specific endpoint (gets pricing for authenticated user)
+    if (transportId) {
+      return this.request<{
+        success: boolean
+        data: {
+          pricingRules: any[]
+        }
+      }>(`/transport/pricing/categories?transportId=${transportId}`)
+    } else {
+      return this.request<{
+        success: boolean
+        data: {
+          pricingRules: any[]
+        }
+      }>("/transport/category-pricing")
+    }
   }
 
   /**
-   * Set pricing for category
+   * Set pricing for category (for authenticated transport user)
    */
   async setCategoryPricing(data: {
-    transportId: number
     categoryId: number
     pricePerUnitVnd: number
     fragileMultiplier: number
@@ -1973,11 +1982,15 @@ class ApiClient {
     heavyThresholdKg: number
     validFrom: string
     validTo?: string
+    sizeId?: number
   }) {
     return this.request<{
       success: boolean
+      data: {
+        pricingId: number
+      }
       message: string
-    }>("/transport/pricing/categories", {
+    }>("/transport/category-pricing", {
       method: "POST",
       body: JSON.stringify(data),
     })
